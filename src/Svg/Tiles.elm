@@ -1,4 +1,7 @@
-module Svg.Tiles exposing (Map, Tile, view, tileWidth, tileHeight, tileXCoord, tileYCoord, proportion)
+module Svg.Tiles exposing
+    ( Map, Tile, view
+    , tileWidth, tileHeight, tileXCoord, tileYCoord, proportion
+    )
 
 {-| _Disclaimer:_ If you're looking for a plotting library, then please
 use [elm-plot](https://github.com/terezka/elm-plot) instead, as this library is not
@@ -11,16 +14,20 @@ to accommodate your needs!
 View for creating tiled maps like heatmaps or choropleths. Note that this return a SVG element not yet wrapped
 in the `svg` tag.
 
+
 # Composing
+
 @docs Map, Tile, view
 
+
 # Helpers
+
 @docs tileWidth, tileHeight, tileXCoord, tileYCoord, proportion
 
 -}
 
-import Svg exposing (Svg, Attribute, g, path, rect, text)
-import Svg.Attributes as Attributes exposing (class, width, height, stroke, transform, style)
+import Svg exposing (Attribute, Svg, g, path, rect, text)
+import Svg.Attributes as Attributes exposing (class, height, stroke, style, transform, width)
 
 
 
@@ -30,119 +37,120 @@ import Svg.Attributes as Attributes exposing (class, width, height, stroke, tran
 {-| (You can use the helpers for calculating most of these properties. You're welcome.)
 -}
 type alias Map msg =
-  { tiles : List (Tile msg)
-  , tilesPerRow : Int
-  , tileWidth : Float
-  , tileHeight : Float
-  }
+    { tiles : List (Tile msg)
+    , tilesPerRow : Int
+    , tileWidth : Float
+    , tileHeight : Float
+    }
 
 
 {-| -}
 type alias Tile msg =
-  { content : Maybe (Svg msg)
-  , attributes : List (Attribute msg)
-  , index : Int
-  }
+    { content : Maybe (Svg msg)
+    , attributes : List (Attribute msg)
+    , index : Int
+    }
 
 
 {-| View a map!
 -}
 view : Map msg -> Svg msg
-view { tiles, tilesPerRow, tileWidth, tileHeight } =
-  let
-    xCoord =
-      tileXCoord tileWidth tilesPerRow
+view map =
+    let
+        xCoord =
+            tileXCoord map.tileWidth map.tilesPerRow
 
-    yCoord =
-      tileYCoord tileHeight tilesPerRow
+        yCoord =
+            tileYCoord map.tileHeight map.tilesPerRow
 
-    tileAttributes { index, attributes } =
-      [ Attributes.stroke "white"
-      , Attributes.strokeWidth "1px"
-      ]
-      ++ attributes ++
-      [ Attributes.width (toString tileWidth)
-      , Attributes.height (toString tileHeight)
-      , Attributes.x (toString <| xCoord index)
-      , Attributes.y (toString <| yCoord index)
-      ]
+        tileAttributes { index, attributes } =
+            [ Attributes.stroke "white"
+            , Attributes.strokeWidth "1px"
+            ]
+                ++ attributes
+                ++ [ Attributes.width (String.fromFloat map.tileWidth)
+                   , Attributes.height (String.fromFloat map.tileHeight)
+                   , Attributes.x (String.fromFloat <| xCoord index)
+                   , Attributes.y (String.fromFloat <| yCoord index)
+                   ]
 
-    viewContent index view =
-      g [ style "text-anchor: middle;"
-        , transform <|
-            translate
-              (xCoord index + tileWidth / 2)
-              (yCoord index + tileHeight / 2 + 5)
-        ]
-        [  view ]
+        viewContent index view_ =
+            g
+                [ style "text-anchor: middle;"
+                , transform <|
+                    translate
+                        (xCoord index + map.tileWidth / 2)
+                        (yCoord index + map.tileHeight / 2 + 5)
+                ]
+                [ view_ ]
 
-    viewTile tile =
-      g [ Attributes.class "elm-plot__heat-map__tile" ]
-        [ rect (tileAttributes tile) []
-        , Maybe.map (viewContent tile.index) tile.content |> Maybe.withDefault (text "")
-        ]
-  in
-    g [ Attributes.class "elm-plot__heat-map" ] (List.map viewTile tiles)
+        viewTile tile =
+            g [ Attributes.class "elm-plot__heat-map__tile" ]
+                [ rect (tileAttributes tile) []
+                , Maybe.map (viewContent tile.index) tile.content |> Maybe.withDefault (text "")
+                ]
+    in
+    g [ Attributes.class "elm-plot__heat-map" ] (List.map viewTile map.tiles)
 
 
 
 -- HELPERS
 
 
-{-| Pass the __width__ of your map, and the __amount of
- tiles in a row__, and it gives you back the width of
- a single tile.
- -}
+{-| Pass the **width** of your map, and the **amount of
+tiles in a row**, and it gives you back the width of
+a single tile.
+-}
 tileWidth : Int -> Int -> Int
 tileWidth width tilesPerRow =
-  floor (toFloat width / toFloat tilesPerRow)
+    floor (toFloat width / toFloat tilesPerRow)
 
 
-{-| Pass the __height__ of your map, the __amount of
- tiles in a row__, and the __total number of tiles__,
- and it gives you back the height of a single tile.
- -}
+{-| Pass the **height** of your map, the **amount of
+tiles in a row**, and the **total number of tiles**,
+and it gives you back the height of a single tile.
+-}
 tileHeight : Int -> Int -> Int -> Int
 tileHeight height tilesPerRow numberOfTiles =
-  floor (toFloat height / toFloat (tilesPerColumn numberOfTiles tilesPerRow))
+    floor (toFloat height / toFloat (tilesPerColumn numberOfTiles tilesPerRow))
 
 
 tilesPerColumn : Int -> Int -> Int
 tilesPerColumn numberOfTiles tilesPerRow =
-  ceiling (toFloat numberOfTiles / toFloat tilesPerRow)
+    ceiling (toFloat numberOfTiles / toFloat tilesPerRow)
 
 
-{-| Pass the __tile width__, the __amount of tiles in a row__, and
- the __tile's index__ and it'll get you it's x-coordinate.
+{-| Pass the **tile width**, the **amount of tiles in a row**, and
+the **tile's index** and it'll get you it's x-coordinate.
 -}
 tileXCoord : Float -> Int -> Int -> Float
-tileXCoord tileWidth tilesPerRow index =
-  tileWidth * toFloat (index % tilesPerRow)
+tileXCoord tileWidth_ tilesPerRow index =
+    tileWidth_ * toFloat (Basics.remainderBy tilesPerRow index)
 
 
-{-| Pass the __tile height__, the __amount of tiles in a row__ and
- the __tile's index__ and it'll get you it's y-coordinate.
+{-| Pass the **tile height**, the **amount of tiles in a row** and
+the **tile's index** and it'll get you it's y-coordinate.
 -}
 tileYCoord : Float -> Int -> Int -> Float
-tileYCoord tileHeight tilesPerRow index =
-  tileHeight * toFloat (index // tilesPerRow)
+tileYCoord tileHeight_ tilesPerRow index =
+    tileHeight_ * toFloat (index // tilesPerRow)
 
 
 {-| For heatmaps. It calculates a value's value relative to all values.
 -}
 proportion : (a -> Float) -> List a -> Float -> Float
 proportion toValue tiles value =
-  let
-    lowestValue =
-      List.map toValue tiles
-        |> List.minimum
-        |> Maybe.withDefault 0
+    let
+        lowestValue =
+            List.map toValue tiles
+                |> List.minimum
+                |> Maybe.withDefault 0
 
-    highestValue =
-      List.map toValue tiles
-        |> List.maximum
-        |> Maybe.withDefault lowestValue
-  in
+        highestValue =
+            List.map toValue tiles
+                |> List.maximum
+                |> Maybe.withDefault lowestValue
+    in
     (value - lowestValue) / (highestValue - lowestValue)
 
 
@@ -152,4 +160,4 @@ proportion toValue tiles value =
 
 translate : Float -> Float -> String
 translate x y =
-  "translate(" ++ toString x ++ ", " ++ toString y ++ ")"
+    "translate(" ++ String.fromFloat x ++ ", " ++ String.fromFloat y ++ ")"
